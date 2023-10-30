@@ -55,7 +55,8 @@ def waveform2melspec(waveform, sample_rate, num_mel_bins, target_length):
         )
     # cut and pad
     if p > 0:
-        fbank = torch.nn.functional.pad(fbank, (0, p), mode="constant", value=0)
+        fbank = torch.nn.functional.pad(
+            fbank, (0, p), mode="constant", value=0)
     elif p < 0:
         fbank = fbank[:, 0:target_length]
     # Convert to [1, mel_bins, num_frames] shape, essentially like a 1
@@ -70,7 +71,8 @@ def get_clip_timepoints(clip_sampler, duration):
     is_last_clip = False
     end = 0.0
     while not is_last_clip:
-        start, end, _, _, is_last_clip = clip_sampler(end, duration, annotation=None)
+        start, end, _, _, is_last_clip = clip_sampler(
+            end, duration, annotation=None)
         all_clips_timepoints.append((start, end))
     return all_clips_timepoints
 
@@ -157,7 +159,7 @@ def load_and_transform_audio_data(
         for clip_timepoints in all_clips_timepoints:
             waveform_clip = waveform[
                 :,
-                int(clip_timepoints[0] * sample_rate) : int(
+                int(clip_timepoints[0] * sample_rate): int(
                     clip_timepoints[1] * sample_rate
                 ),
             ]
@@ -246,8 +248,10 @@ def uniform_crop(images, size, spatial_idx, boxes=None, scale_size=None):
             x_offset = 0
         elif spatial_idx == 2:
             x_offset = width - size
-    cropped = images[:, :, y_offset : y_offset + size, x_offset : x_offset + size]
-    cropped_boxes = crop_boxes(boxes, x_offset, y_offset) if boxes is not None else None
+    cropped = images[:, :, y_offset: y_offset +
+                     size, x_offset: x_offset + size]
+    cropped_boxes = crop_boxes(
+        boxes, x_offset, y_offset) if boxes is not None else None
     if ndim == 3:
         cropped = cropped.squeeze(0)
     return cropped, cropped_boxes
@@ -282,7 +286,8 @@ class SpatialCrop(nn.Module):
             videos: A list with 3x the number of elements. Each video converted
                 to C, T, H', W' by spatial cropping.
         """
-        assert isinstance(videos, list), "Must be a list of videos after temporal crops"
+        assert isinstance(
+            videos, list), "Must be a list of videos after temporal crops"
         assert all([video.ndim == 4 for video in videos]), "Must be (C,T,H,W)"
         res = []
         for video in videos:
@@ -292,7 +297,8 @@ class SpatialCrop(nn.Module):
                 continue
             flipped_video = transforms.functional.hflip(video)
             for spatial_idx in self.flipped_crops_to_ext:
-                res.append(uniform_crop(flipped_video, self.crop_size, spatial_idx)[0])
+                res.append(uniform_crop(flipped_video,
+                           self.crop_size, spatial_idx)[0])
         return res
 
 
@@ -320,7 +326,8 @@ def load_and_transform_video_data(
     clip_sampler = ConstantClipsPerVideoSampler(
         clip_duration=clip_duration, clips_per_video=clips_per_video
     )
-    frame_sampler = pv_transforms.UniformTemporalSubsample(num_samples=clip_duration)
+    frame_sampler = pv_transforms.UniformTemporalSubsample(
+        num_samples=clip_duration)
 
     for video_path in video_paths:
         video = EncodedVideo.from_path(
@@ -330,7 +337,8 @@ def load_and_transform_video_data(
             **{"sample_rate": sample_rate},
         )
 
-        all_clips_timepoints = get_clip_timepoints(clip_sampler, video.duration)
+        all_clips_timepoints = get_clip_timepoints(
+            clip_sampler, video.duration)
 
         all_video = []
         for clip_timepoints in all_clips_timepoints:
@@ -350,3 +358,12 @@ def load_and_transform_video_data(
         video_outputs.append(all_video)
 
     return torch.stack(video_outputs, dim=0).to(device)
+
+
+# =========================== new implement(JHJ) ========================================================
+
+def load_and_transform_3D(point, device):
+    # already tokenizer in preprocessor
+    return point
+
+# =======================================================================================================
