@@ -5,6 +5,8 @@
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
 
+import torch.nn.functional as F
+from models.dvae import DiscreteVAE, Group
 import gzip
 import html
 import io
@@ -48,7 +50,8 @@ def interpolate_pos_encoding_2d(target_spatial_size, pos_embed):
         return pos_embed
     dim = pos_embed.shape[-1]
     # nn.functional.interpolate doesn't work with bfloat16 so we cast to float32
-    pos_embed, updated = cast_if_src_dtype(pos_embed, torch.bfloat16, torch.float32)
+    pos_embed, updated = cast_if_src_dtype(
+        pos_embed, torch.bfloat16, torch.float32)
     pos_embed = nn.functional.interpolate(
         pos_embed.reshape(1, int(math.sqrt(N)), int(math.sqrt(N)), dim).permute(
             0, 3, 1, 2
@@ -57,7 +60,8 @@ def interpolate_pos_encoding_2d(target_spatial_size, pos_embed):
         mode="bicubic",
     )
     if updated:
-        pos_embed, _ = cast_if_src_dtype(pos_embed, torch.float32, torch.bfloat16)
+        pos_embed, _ = cast_if_src_dtype(
+            pos_embed, torch.float32, torch.bfloat16)
     pos_embed = pos_embed.permute(0, 2, 3, 1).view(1, -1, dim)
     return pos_embed
 
@@ -70,7 +74,8 @@ def interpolate_pos_encoding(
     first_patch_idx=1,
 ):
     assert first_patch_idx == 0 or first_patch_idx == 1, "there is 1 CLS token or none"
-    N = pos_embed.shape[1] - first_patch_idx  # since it's 1 if cls_token exists
+    # since it's 1 if cls_token exists
+    N = pos_embed.shape[1] - first_patch_idx
     if npatch_per_img == N:
         return pos_embed
 
@@ -173,11 +178,13 @@ class SpatioTemporalPosEmbeddingHelper(VerboseNNModule):
         self.num_tokens = num_cls_tokens + num_patches
         self.learnable = learnable
         if self.learnable:
-            self.pos_embed = nn.Parameter(torch.zeros(1, self.num_tokens, embed_dim))
+            self.pos_embed = nn.Parameter(
+                torch.zeros(1, self.num_tokens, embed_dim))
             trunc_normal_(self.pos_embed, std=0.02)
         else:
             self.register_buffer(
-                "pos_embed", get_sinusoid_encoding_table(self.num_tokens, embed_dim)
+                "pos_embed", get_sinusoid_encoding_table(
+                    self.num_tokens, embed_dim)
             )
 
     def get_pos_embedding(self, vision_input, all_vision_tokens):
@@ -264,7 +271,8 @@ class RGBDTPreprocessor(VerboseNNModule):
             )  # stole class_tokens impl from Phil Wang, thanks
             tokens = torch.cat((class_tokens, tokens), dim=1)
         if self.use_pos_embed:
-            pos_embed = self.pos_embedding_helper.get_pos_embedding(input, tokens)
+            pos_embed = self.pos_embedding_helper.get_pos_embedding(
+                input, tokens)
             tokens = tokens + pos_embed
         if self.use_type_embed:
             tokens = tokens + self.type_embed.expand(B, -1, -1)
@@ -437,7 +445,8 @@ class PadIm2Video(Im2Video):
                 x = x.repeat(new_shape)
             elif self.pad_type == "zero":
                 padarg = [0, 0] * len(x.shape)
-                padarg[2 * self.time_dim + 1] = self.ntimes - x.shape[self.time_dim]
+                padarg[2 * self.time_dim + 1] = self.ntimes - \
+                    x.shape[self.time_dim]
                 x = nn.functional.pad(x, padarg)
         return x
 
@@ -501,9 +510,11 @@ class SimpleTokenizer(object):
 
         with g_pathmgr.open(bpe_path, "rb") as fh:
             bpe_bytes = io.BytesIO(fh.read())
-            merges: List[str] = gzip.open(bpe_bytes).read().decode("utf-8").split("\n")
-        merges = merges[1 : 49152 - 256 - 2 + 1]
-        merges: List[Tuple[str, ...]] = [tuple(merge.split()) for merge in merges]
+            merges: List[str] = gzip.open(
+                bpe_bytes).read().decode("utf-8").split("\n")
+        merges = merges[1: 49152 - 256 - 2 + 1]
+        merges: List[Tuple[str, ...]] = [
+            tuple(merge.split()) for merge in merges]
         vocab = list(bytes_to_unicode().values())
         vocab = vocab + [v + "</w>" for v in vocab]
         for merge in merges:
@@ -532,7 +543,8 @@ class SimpleTokenizer(object):
             return token + "</w>"
 
         while True:
-            bigram = min(pairs, key=lambda pair: self.bpe_ranks.get(pair, float("inf")))
+            bigram = min(pairs, key=lambda pair: self.bpe_ranks.get(
+                pair, float("inf")))
             if bigram not in self.bpe_ranks:
                 break
             first, second = bigram
@@ -567,7 +579,8 @@ class SimpleTokenizer(object):
         bpe_tokens = []
         text = whitespace_clean(basic_clean(text)).lower()
         for token in re.findall(self.pat, text):
-            token = "".join(self.byte_encoder[b] for b in token.encode("utf-8"))
+            token = "".join(self.byte_encoder[b]
+                            for b in token.encode("utf-8"))
             bpe_tokens.extend(
                 self.encoder[bpe_token] for bpe_token in self.bpe(token).split(" ")
             )
@@ -591,7 +604,8 @@ class SimpleTokenizer(object):
 
         sot_token = self.encoder["<|startoftext|>"]
         eot_token = self.encoder["<|endoftext|>"]
-        all_tokens = [[sot_token] + self.encode(text) + [eot_token] for text in texts]
+        all_tokens = [[sot_token] +
+                      self.encode(text) + [eot_token] for text in texts]
         result = torch.zeros(len(all_tokens), context_length, dtype=torch.long)
 
         for i, tokens in enumerate(all_tokens):
@@ -621,7 +635,8 @@ class IMUPreprocessor(VerboseNNModule):
         self.num_cls_tokens = num_cls_tokens
         self.kernel_size = kernel_size
         self.pos_embed = nn.Parameter(
-            torch.empty(1, (img_size[1] // kernel_size) + num_cls_tokens, embed_dim)
+            torch.empty(1, (img_size[1] // kernel_size) +
+                        num_cls_tokens, embed_dim)
         )
 
         if self.num_cls_tokens > 0:
@@ -683,3 +698,119 @@ class IMUPreprocessor(VerboseNNModule):
             "head": {},
         }
         return return_dict
+
+
+# =========================== new implement(JHJ) ========================================================
+
+# incoperate the DVAE
+# JHJ: DVAE 넣고, pretrained parameter -->
+
+
+config = {    
+    "group_size": 32, 
+    "num_group": 64, 
+    "encoder_dims": 256,
+    "num_tokens": 8192,
+    "tokens_dims": 256, 
+    "decoder_dims": 256, 
+    "ckpt": 'Need to be set' # set the dVAE weight here
+}
+   
+
+class Point3DPreprocessor(VerboseNNModule):
+    def __init__(self, logit_dim: int,
+                 embed_dim: int,
+                causal_masking: bool,
+                 dvae_ckpt,
+                 init_param_style: str = "openclip",
+                 ):
+        super().__init__()
+
+        self.embed_dim = embed_dim
+
+        # cls_token
+        self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
+
+        # pos_token
+        self.cls_pos = nn.Parameter(torch.randn(1, 1, embed_dim))
+        # position_embedding
+        self.pos_embed = nn.Sequential(
+            nn.Linear(3, 128),
+            nn.GELU(),
+            nn.Linear(128, self.trans_dim)
+        )
+
+        self.dvae = DiscreteVAE(config)
+        self.dvae_ckpt = dvae_ckpt
+        self.init_parameters(init_param_style)
+
+        self.causal_masking = causal_masking
+        if self.causal_masking:
+            mask = build_causal_attention_mask(self.context_length)
+            # register the mask as a buffer so it can be moved to the right device
+            self.register_buffer("mask", mask)
+        
+
+    def _prepare_dvae(self):
+        ckpt = torch.load(self.dvae_ckpt, map_location='cpu')
+        base_ckpt = {k.replace("module.", ""): v for k,
+                     v in ckpt['base_model'].items()}
+        self.dvae.load_state_dict(base_ckpt, strict=True)
+
+
+    @torch.no_grad()
+    def init_parameters(self, init_param_style="openclip"):
+        self._prepare_dvae() # get the pretrained parameters
+
+        nn.init.normal_(self.pos_embed, std=0.01)
+
+        for m in self.pos_embed:
+            nn.init.normal_(m.weight, std=0.02)
+
+        if init_param_style == "openclip":
+            scale = self.embed_dim**-0.5
+            self.cls_token *= scale
+        elif init_param_style == "vit":
+            self.cls_token.data.fill_(0)
+        else:
+            raise ValueError(f"Unknown init {init_param_style}")
+
+    def forward(self, pointcloud, inp, temperature=1., hard=False):
+        # 여기서 살짝 바꿀 수 있도록 학습하기
+
+        # point bert에 있는 모델
+        neighborhood, center = self.dvae.group_divider(inp)
+        gt_logits = self.dvae.encoder(neighborhood)  # B G C / mini pointnet
+        gt_logits = self.dvae.dgcnn_1(gt_logits, center)  # B G N / tokenizer 
+
+        soft_one_hot = F.gumbel_softmax(
+            gt_logits, tau=temperature, dim=2, hard=hard)  # B G N / tokenizer 
+        point_tokens = torch.einsum('b g n, n c -> b g c',
+                               soft_one_hot, self.dvae.codebook)  # B G C / embedding layer
+
+
+        # cls tokens 
+        cls_tokens = self.cls_token.expand(gt_logits.size(0), -1, -1)
+        cls_pos = self.cls_pos.expand(gt_logits.size(0), -1, -1)
+
+        # pos token
+        pos = self.pos_embed(center)
+
+        # final input
+        point_tokens = torch.cat((cls_tokens, point_tokens), dim=1)
+        pos = torch.cat((cls_pos, pos), dim=1)
+
+        point_tokens = point_tokens + pos
+
+        return_dict = {
+            "trunk": {
+                "tokens": point_tokens,
+            },
+            "head": {}
+
+        }
+
+        return return_dict
+
+
+# =======================================================================================================
