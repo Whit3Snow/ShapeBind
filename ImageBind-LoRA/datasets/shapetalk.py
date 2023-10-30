@@ -3,53 +3,55 @@ from typing import Optional, Callable
 
 from sklearn.model_selection import train_test_split
 from torch.utils.data import Dataset
+import pandas as pd
+import torch
+import numpy as np
 
-from models.imagebind_model import ModalityType
 import data
 
+# ShapeTalkDataset
+# 
+# Output of ShapeTalkDataset is a text-shape pair
 
-class DreamBoothDataset(Dataset):
-    def __init__(self, root_dir: str, transform: Optional[Callable] = None,
-                 split: str = 'train', train_size: float = 0.8, random_seed: int = 42, device: str = 'cpu'):
+
+
+top_img_dir = 'images/full_size/'
+shapetalk_file = 'language/shapetalk_raw_public_version_0.csv'
+top_shape_dir = 'point_clouds/scaled_to_align_rendering/'
+
+
+class ShapeTalkDataset(Dataset):
+    def __init__(self, root_dir: str, split: str = 'train', max_utters: int = 5,
+                 train_size: float = 0.8, random_seed: int = 42, device: str = 'cpu'):
         self.root_dir = root_dir
-        self.transform = transform
         self.device = device
+        self.max_utters = max_utters
+        
+        self.df = pd.read_csv(os.path.join(root_dir, shapetalk_file))
 
-        self.classes = [d for d in os.listdir(
-            root_dir) if os.path.isdir(os.path.join(root_dir, d))]
-        self.class_to_idx = {cls: idx for idx, cls in enumerate(self.classes)}
-
-        self.paths = []
-        for cls in self.classes:
-            cls_dir = os.path.join(root_dir, cls)
-            for filename in os.listdir(cls_dir):
-                if filename.endswith('.jpg'):
-                    self.paths.append((os.path.join(cls_dir, filename), cls))
-
-        # Split dataset
-        train_paths, test_paths = train_test_split(
-            self.paths, train_size=train_size, random_state=random_seed)
+        self.idx = []
+        train_idx, test_idx = train_test_split(range(len(self.df)), train_size=train_size, random_state=random_seed)
 
         if split == 'train':
-            self.paths = train_paths
+            self.idx = train_idx
         elif split == 'test':
-            self.paths = test_paths
+            self.idx = test_idx
         else:
-            raise ValueError(
-                f"Invalid split argument. Expected 'train' or 'test', got {split}")
+            raise ValueError(f"Invalid split argument. Expected 'train' or 'test', got {split}")
+
 
     def __len__(self):
-        return len(self.paths)
+        return len(self.idx)
 
     def __getitem__(self, index):
-        img_path, class_text = self.paths[index]
-        images = data.load_and_transform_vision_data(
-            [img_path], self.device, to_tensor=False)
+        idx = self.idx[index]
+        dt = self.df.loc[idx]
 
-        if self.transform is not None:
-            image = images[0]
-            images = self.transform(image)
+        text = f'This is a {dt["target_object_class"]}. ' + ' '.join(dt[f'utterance_{i}'] for i in range(self.max_utters) if type(dt[f'utterance_{i}']) is str)
+        text = data.load_and_transform_text([text], self.device)
 
-        texts = data.load_and_transform_text([class_text], self.device)
+        shape_path = os.path.join(self.root_dir, top_shape_dir, dt["target_uid"] + ".npz")
+        shape = np.load(shape_path)['pointcloud']
+        shape = torch.from_numpy(shape).to(self.device)
 
-        return images, ModalityType.VISION, texts, ModalityType.TEXT
+        return text, shape
