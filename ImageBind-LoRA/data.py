@@ -20,6 +20,9 @@ from torchvision.transforms._transforms_video import NormalizeVideo
 
 from models.multimodal_preprocessors import SimpleTokenizer
 
+import numpy as np
+from datasets.plyfile import load_ply
+
 DEFAULT_AUDIO_FRAME_SHIFT_MS = 10  # in milliseconds
 
 BPE_PATH = "bpe/bpe_simple_vocab_16e6.txt.gz"
@@ -115,7 +118,7 @@ def load_and_transform_vision_data(image_paths, device, to_tensor=True):
         else:
             image = data_transform(image)
             image_ouputs.append(image)
-    return image_ouputs if not to_tensor else torch.stack(image_ouputs, dim=0)
+    return image_ouputs if not to_tensor else torch.stack(image_ouputs, dim=0).to(device)
 
 
 def load_and_transform_text(text, device):
@@ -189,6 +192,7 @@ def crop_boxes(boxes, x_offset, y_offset):
         cropped_boxes (ndarray or None): the cropped boxes with dimension of
             `num boxes` x 4.
     """
+    
     cropped_boxes = boxes.copy()
     cropped_boxes[:, [0, 2]] = boxes[:, [0, 2]] - x_offset
     cropped_boxes[:, [1, 3]] = boxes[:, [1, 3]] - y_offset
@@ -362,8 +366,68 @@ def load_and_transform_video_data(
 
 # =========================== new implement(JHJ) ========================================================
 
-def load_and_transform_3D(point, device):
+def load_and_transform_3D(pc_paths, device: str = 'cpu', sample_points_num: int = 1024, random_seed: int = 42):
     # already tokenizer in preprocessor
-    return point
+
+    # Random seed 고정
+    np.random.seed(random_seed)
+    
+    # ShapeTalk default point number 16384
+    npoints = 16384
+    permutation = np.arange(npoints)
+
+    pc_outputs = []
+    for pc_path in pc_paths:
+        shape = np.load(pc_path)['pointcloud']
+
+        # Sample & Normalize
+        shape = random_sample(shape, sample_points_num, permutation)
+        shape = pc_norm(shape)
+
+        # Point-BERT는 여기서 float()
+        shape = torch.from_numpy(shape)
+        pc_outputs.append(shape)
+    
+    return torch.stack(pc_outputs, dim=0).to(device)
+
+
+def pc_norm(pc):
+    """ pc: NxC, return NxC """
+    centroid = np.mean(pc, axis=0)
+    pc = pc - centroid
+    m = np.max(np.sqrt(np.sum(pc**2, axis=1)))
+    pc = pc / m
+    return pc
+
+def random_sample(pc, num, permutation):
+    np.random.shuffle(permutation)
+    pc = pc[permutation[:num]]
+    return pc
+
+def load_and_transform_ply(pc_paths, device: str = 'cpu', sample_points_num: int = 1024, random_seed: int = 42):
+    # already tokenizer in preprocessor
+
+    # Random seed 고정
+    np.random.seed(random_seed)
+    
+    # ShapeTalk default point number 16384
+    npoints = 2048
+    permutation = np.arange(npoints)
+
+    pc_outputs = []
+    for pc_path in pc_paths:
+        # shape = np.load(pc_path)['pointcloud']
+        shape = load_ply(pc_path)
+
+        # Sample & Normalize
+        shape = random_sample(shape, sample_points_num, permutation)
+        shape = pc_norm(shape)
+
+        # Point-BERT는 여기서 float()
+        shape = torch.from_numpy(shape)
+        pc_outputs.append(shape)
+    
+    return torch.stack(pc_outputs, dim=0).to(device)
+
 
 # =======================================================================================================
