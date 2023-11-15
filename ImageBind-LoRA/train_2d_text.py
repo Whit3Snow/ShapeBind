@@ -166,6 +166,17 @@ class ImageBindTrain(L.LightningModule):
 
         self.log(mode + "_loss", dual_nll, prog_bar=True,
                  on_step=LOG_ON_STEP, on_epoch=LOG_ON_EPOCH, batch_size=self.hparams.batch_size)
+        
+        # print("-----------------------------------------------------------")
+        # print(sum(p.numel() for p in self.model.parameters() if p.requires_grad))
+        # print(sum(p.numel() for p in self.model.parameters()))
+        # print(sum(p.numel() for p in self.model.parameters() if p.grad_fn == None))
+
+
+        # print("-----------------------------------------------------------")
+
+        # breakpoint()
+
         return dual_nll
 
     def training_step(self, batch, batch_idx):

@@ -11,7 +11,7 @@ logging.basicConfig(level=logging.INFO, force=True)
 
 lora = True
 linear_probing = False
-device = "cpu"  # "cuda:0" if torch.cuda.is_available() else "cpu"
+device = "cuda:2"  # "cuda:0" if torch.cuda.is_available() else "cpu"
 load_head_post_proc_finetuned = True
 
 assert not (linear_probing and lora), \
@@ -37,12 +37,13 @@ image_paths=[".assets/bird_image.jpg",
              ".assets/dog5.jpg",
              ".assets/dog8.jpg",
              ".assets/grey_sloth_plushie.jpg"]
-audio_paths=[".assets/bird_audio.wav",
-             ".assets/car_audio.wav",
-             ".assets/dog_audio.wav"]
+# audio_paths=[".assets/bird_audio.wav",
+#              ".assets/car_audio.wav",
+#              ".assets/dog_audio.wav"]
 
 # Instantiate model
-model = imagebind_model.imagebind_huge(pretrained=True)
+# model = imagebind_model.imagebind_huge(pretrained=True)
+model = imagebind_model.imagebind_huge(pretrained=True, model_path="/root/volume/.checkpoints/2d_text_full_1024/imagebind-epoch=20-val_loss=0.23.ckpt")
 if lora:
     model.modality_trunks.update(
         LoRA.apply_lora_modality_trunks(model.modality_trunks, rank=4,
@@ -72,7 +73,7 @@ model.to(device)
 inputs = {
     ModalityType.TEXT: data.load_and_transform_text(text_list, device),
     ModalityType.VISION: data.load_and_transform_vision_data(image_paths, device, to_tensor=True),
-    ModalityType.AUDIO: data.load_and_transform_audio_data(audio_paths, device),
+    # ModalityType.AUDIO: data.load_and_transform_audio_data(audio_paths, device),
 }
 
 with torch.no_grad():
@@ -82,12 +83,12 @@ print(
     "Vision x Text: ",
     torch.softmax(embeddings[ModalityType.VISION] @ embeddings[ModalityType.TEXT].T * (lora_factor if lora else 1), dim=-1),
 )
-print(
-    "Audio x Text: ",
-    torch.softmax(embeddings[ModalityType.AUDIO] @ embeddings[ModalityType.TEXT].T * (lora_factor if lora else 1), dim=-1),
-)
-print(
-    "Vision x Audio: ",
-    torch.softmax(embeddings[ModalityType.VISION] @ embeddings[ModalityType.AUDIO].T, dim=-1),
-)
+# print(
+#     "Audio x Text: ",
+#     torch.softmax(embeddings[ModalityType.AUDIO] @ embeddings[ModalityType.TEXT].T * (lora_factor if lora else 1), dim=-1),
+# )
+# print(
+#     "Vision x Audio: ",
+#     torch.softmax(embeddings[ModalityType.VISION] @ embeddings[ModalityType.AUDIO].T, dim=-1),
+# )
 
