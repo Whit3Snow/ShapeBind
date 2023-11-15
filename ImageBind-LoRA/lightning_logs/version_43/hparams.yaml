@@ -1,0 +1,2 @@
+batch_size: 12
+linear_probing: false
