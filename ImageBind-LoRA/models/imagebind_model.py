@@ -15,78 +15,96 @@ import torch.nn as nn
 
 from models.helpers import (EinOpsRearrange, LearnableLogitScaling, Normalize,
                             SelectElement, SelectEOSAndProject)
-from models.multimodal_preprocessors import (AudioPreprocessor,
-                                             IMUPreprocessor, PadIm2Video,
-                                             PatchEmbedGeneric,
-                                             RGBDTPreprocessor,
-                                             SpatioTemporalPosEmbeddingHelper,
-                                             TextPreprocessor,
-                                             ThermalPreprocessor)
+from models.multimodal_preprocessors import (
+    # AudioPreprocessor,
+    #  IMUPreprocessor
+    PadIm2Video,
+    PatchEmbedGeneric,
+    RGBDTPreprocessor,
+    SpatioTemporalPosEmbeddingHelper,
+    TextPreprocessor,
+    #  ThermalPreprocessor,
+    Point3DPreprocessor)
 from models.transformer import MultiheadAttention, SimpleTransformer
 
+import pdb
+# TODO: add shape preprocessor when initializing model
+
+# TODO: Remove audio, thermal, imu, depth modality and add shape modality
 ModalityType = SimpleNamespace(
     VISION="vision",
     TEXT="text",
-    AUDIO="audio",
-    THERMAL="thermal",
-    DEPTH="depth",
-    IMU="imu",
+    # AUDIO="audio",
+    # THERMAL="thermal",
+    # DEPTH="depth",
+    # IMU="imu",
+    SHAPE="shape",
 )
 
+import pdb 
 
 class ImageBindModel(nn.Module):
     def __init__(
         self,
+        dvae_device = "cuda:0",
         video_frames=2,
         kernel_size=(2, 14, 14),
-        audio_kernel_size=16,
-        audio_stride=10,
+        # audio_kernel_size=16,
+        # audio_stride=10,
         out_embed_dim=768,
         vision_embed_dim=1024,
         vision_num_blocks=24,
         vision_num_heads=16,
-        audio_embed_dim=768,
-        audio_num_blocks=12,
-        audio_num_heads=12,
-        audio_num_mel_bins=128,
-        audio_target_len=204,
-        audio_drop_path=0.1,
+        # audio_embed_dim=768,
+        # audio_num_blocks=12,
+        # audio_num_heads=12,
+        # audio_num_mel_bins=128,
+        # audio_target_len=204,
+        # audio_drop_path=0.1,
         text_embed_dim=768,
         text_num_blocks=12,
         text_num_heads=12,
-        depth_embed_dim=384,
-        depth_kernel_size=16,
-        depth_num_blocks=12,
-        depth_num_heads=8,
-        depth_drop_path=0.0,
-        thermal_embed_dim=768,
-        thermal_kernel_size=16,
-        thermal_num_blocks=12,
-        thermal_num_heads=12,
-        thermal_drop_path=0.0,
-        imu_embed_dim=512,
-        imu_kernel_size=8,
-        imu_num_blocks=6,
-        imu_num_heads=8,
-        imu_drop_path=0.7,
+        # depth_embed_dim=384,
+        # depth_kernel_size=16,
+        # depth_num_blocks=12,
+        # depth_num_heads=8,
+        # depth_drop_path=0.0,
+        # thermal_embed_dim=768,
+        # thermal_kernel_size=16,
+        # thermal_num_blocks=12,
+        # thermal_num_heads=12,
+        # thermal_drop_path=0.0,
+        # imu_embed_dim=512,
+        # imu_kernel_size=8,
+        # imu_num_blocks=6,
+        # imu_num_heads=8,
+        # imu_drop_path=0.7,
+        shape_embed_dim=256,
+        shape_trans_dim=384,
+        shape_num_blocks=12,
+        shape_num_heads=12,
     ):
         super().__init__()
 
         self.modality_preprocessors = self._create_modality_preprocessors(
+            dvae_device,
             video_frames,
             vision_embed_dim,
             kernel_size,
             text_embed_dim,
-            audio_embed_dim,
-            audio_kernel_size,
-            audio_stride,
-            audio_num_mel_bins,
-            audio_target_len,
-            depth_embed_dim,
-            depth_kernel_size,
-            thermal_embed_dim,
-            thermal_kernel_size,
-            imu_embed_dim,
+            shape_embed_dim,
+            shape_trans_dim,
+            # audio_embed_dim,
+            # audio_kernel_size,
+            # audio_stride,
+            # audio_num_mel_bins,
+            # audio_target_len,
+            # depth_embed_dim,
+            # depth_kernel_size,
+            # thermal_embed_dim,
+            # thermal_kernel_size,
+            # imu_embed_dim,
+
         )
 
         self.modality_trunks = self._create_modality_trunks(
@@ -96,32 +114,37 @@ class ImageBindModel(nn.Module):
             text_embed_dim,
             text_num_blocks,
             text_num_heads,
-            audio_embed_dim,
-            audio_num_blocks,
-            audio_num_heads,
-            audio_drop_path,
-            depth_embed_dim,
-            depth_num_blocks,
-            depth_num_heads,
-            depth_drop_path,
-            thermal_embed_dim,
-            thermal_num_blocks,
-            thermal_num_heads,
-            thermal_drop_path,
-            imu_embed_dim,
-            imu_num_blocks,
-            imu_num_heads,
-            imu_drop_path,
+            shape_embed_dim,
+            shape_trans_dim,
+            shape_num_blocks,
+            shape_num_heads,
+            # audio_embed_dim,
+            # audio_num_blocks,
+            # audio_num_heads,
+            # audio_drop_path,
+            # depth_embed_dim,
+            # depth_num_blocks,
+            # depth_num_heads,
+            # depth_drop_path,
+            # thermal_embed_dim,
+            # thermal_num_blocks,
+            # thermal_num_heads,
+            # thermal_drop_path,
+            # imu_embed_dim,
+            # imu_num_blocks,
+            # imu_num_heads,
+            # imu_drop_path,
         )
 
         self.modality_heads = self._create_modality_heads(
             out_embed_dim,
             vision_embed_dim,
             text_embed_dim,
-            audio_embed_dim,
-            depth_embed_dim,
-            thermal_embed_dim,
-            imu_embed_dim,
+            shape_trans_dim,
+            # audio_embed_dim,
+            # depth_embed_dim,
+            # thermal_embed_dim,
+            # imu_embed_dim,
         )
 
         self.modality_postprocessors = self._create_modality_postprocessors(
@@ -130,20 +153,23 @@ class ImageBindModel(nn.Module):
 
     def _create_modality_preprocessors(
         self,
+        dvae_device,
         video_frames=2,
         vision_embed_dim=1024,
         kernel_size=(2, 14, 14),
         text_embed_dim=768,
-        audio_embed_dim=768,
-        audio_kernel_size=16,
-        audio_stride=10,
-        audio_num_mel_bins=128,
-        audio_target_len=204,
-        depth_embed_dim=768,
-        depth_kernel_size=16,
-        thermal_embed_dim=768,
-        thermal_kernel_size=16,
-        imu_embed_dim=512,
+        shape_embed_dim=256,
+        shape_trans_dim=384,
+        # audio_embed_dim=768,
+        # audio_kernel_size=16,
+        # audio_stride=10,
+        # audio_num_mel_bins=128,
+        # audio_target_len=204,
+        # depth_embed_dim=768,
+        # depth_kernel_size=16,
+        # thermal_embed_dim=768,
+        # thermal_kernel_size=16,
+        # imu_embed_dim=512,
     ):
         rgbt_stem = PatchEmbedGeneric(
             proj_stem=[
@@ -160,7 +186,8 @@ class ImageBindModel(nn.Module):
         rgbt_preprocessor = RGBDTPreprocessor(
             img_size=[3, video_frames, 224, 224],
             num_cls_tokens=1,
-            pos_embed_fn=partial(SpatioTemporalPosEmbeddingHelper, learnable=True),
+            pos_embed_fn=partial(
+                SpatioTemporalPosEmbeddingHelper, learnable=True),
             rgbt_stem=rgbt_stem,
             depth_stem=None,
         )
@@ -172,93 +199,104 @@ class ImageBindModel(nn.Module):
             causal_masking=True,
         )
 
-        audio_stem = PatchEmbedGeneric(
-            proj_stem=[
-                nn.Conv2d(
-                    in_channels=1,
-                    kernel_size=audio_kernel_size,
-                    stride=audio_stride,
-                    out_channels=audio_embed_dim,
-                    bias=False,
-                ),
-            ],
-            norm_layer=nn.LayerNorm(normalized_shape=audio_embed_dim),
-        )
-        audio_preprocessor = AudioPreprocessor(
-            img_size=[1, audio_num_mel_bins, audio_target_len],
-            num_cls_tokens=1,
-            pos_embed_fn=partial(SpatioTemporalPosEmbeddingHelper, learnable=True),
-            audio_stem=audio_stem,
-        )
-
-        depth_stem = PatchEmbedGeneric(
-            [
-                nn.Conv2d(
-                    kernel_size=depth_kernel_size,
-                    in_channels=1,
-                    out_channels=depth_embed_dim,
-                    stride=depth_kernel_size,
-                    bias=False,
-                ),
-            ],
-            norm_layer=nn.LayerNorm(normalized_shape=depth_embed_dim),
-        )
-
-        depth_preprocessor = RGBDTPreprocessor(
-            img_size=[1, 224, 224],
-            num_cls_tokens=1,
-            pos_embed_fn=partial(SpatioTemporalPosEmbeddingHelper, learnable=True),
-            rgbt_stem=None,
-            depth_stem=depth_stem,
-        )
-
-        thermal_stem = PatchEmbedGeneric(
-            [
-                nn.Conv2d(
-                    kernel_size=thermal_kernel_size,
-                    in_channels=1,
-                    out_channels=thermal_embed_dim,
-                    stride=thermal_kernel_size,
-                    bias=False,
-                ),
-            ],
-            norm_layer=nn.LayerNorm(normalized_shape=thermal_embed_dim),
-        )
-        thermal_preprocessor = ThermalPreprocessor(
-            img_size=[1, 224, 224],
-            num_cls_tokens=1,
-            pos_embed_fn=partial(SpatioTemporalPosEmbeddingHelper, learnable=True),
-            thermal_stem=thermal_stem,
-        )
-
-        imu_stem = PatchEmbedGeneric(
-            [
-                nn.Linear(
-                    in_features=48,
-                    out_features=imu_embed_dim,
-                    bias=False,
-                ),
-            ],
-            norm_layer=nn.LayerNorm(normalized_shape=imu_embed_dim),
-        )
-
-        imu_preprocessor = IMUPreprocessor(
-            img_size=[6, 2000],
-            num_cls_tokens=1,
-            kernel_size=8,
-            embed_dim=imu_embed_dim,
-            pos_embed_fn=partial(SpatioTemporalPosEmbeddingHelper, learnable=True),
-            imu_stem=imu_stem,
+        shape_preprocessor = Point3DPreprocessor(
+            # TODO: setup arguments for point3dpreprocessor
+            logit_dim=1,
+            embed_dim=shape_embed_dim,
+            trans_dim=shape_trans_dim,
+            causal_masking=False,
+            dvae_ckpt=".checkpoints/dVAE.pth",
+            dvae_device = dvae_device
         )
 
         modality_preprocessors = {
             ModalityType.VISION: rgbt_preprocessor,
             ModalityType.TEXT: text_preprocessor,
-            ModalityType.AUDIO: audio_preprocessor,
-            ModalityType.DEPTH: depth_preprocessor,
-            ModalityType.THERMAL: thermal_preprocessor,
-            ModalityType.IMU: imu_preprocessor,
+            # ModalityType.AUDIO: audio_preprocessor,
+            # ModalityType.DEPTH: depth_preprocessor,
+            # ModalityType.THERMAL: thermal_preprocessor,
+            # ModalityType.IMU: imu_preprocessor,
+            ModalityType.SHAPE: shape_preprocessor,
         }
+
+        # audio_stem = PatchEmbedGeneric(
+        #     proj_stem=[
+        #         nn.Conv2d(
+        #             in_channels=1,
+        #             kernel_size=audio_kernel_size,
+        #             stride=audio_stride,
+        #             out_channels=audio_embed_dim,
+        #             bias=False,
+        #         ),
+        #     ],
+        #     norm_layer=nn.LayerNorm(normalized_shape=audio_embed_dim),
+        # )
+        # audio_preprocessor = AudioPreprocessor(
+        #     img_size=[1, audio_num_mel_bins, audio_target_len],
+        #     num_cls_tokens=1,
+        #     pos_embed_fn=partial(SpatioTemporalPosEmbeddingHelper, learnable=True),
+        #     audio_stem=audio_stem,
+        # )
+
+        # depth_stem = PatchEmbedGeneric(
+        #     [
+        #         nn.Conv2d(
+        #             kernel_size=depth_kernel_size,
+        #             in_channels=1,
+        #             out_channels=depth_embed_dim,
+        #             stride=depth_kernel_size,
+        #             bias=False,
+        #         ),
+        #     ],
+        #     norm_layer=nn.LayerNorm(normalized_shape=depth_embed_dim),
+        # )
+
+        # depth_preprocessor = RGBDTPreprocessor(
+        #     img_size=[1, 224, 224],
+        #     num_cls_tokens=1,
+        #     pos_embed_fn=partial(SpatioTemporalPosEmbeddingHelper, learnable=True),
+        #     rgbt_stem=None,
+        #     depth_stem=depth_stem,
+        # )
+
+        # thermal_stem = PatchEmbedGeneric(
+        #     [
+        #         nn.Conv2d(
+        #             kernel_size=thermal_kernel_size,
+        #             in_channels=1,
+        #             out_channels=thermal_embed_dim,
+        #             stride=thermal_kernel_size,
+        #             bias=False,
+        #         ),
+        #     ],
+        #     norm_layer=nn.LayerNorm(normalized_shape=thermal_embed_dim),
+        # )
+        # thermal_preprocessor = ThermalPreprocessor(
+        #     img_size=[1, 224, 224],
+        #     num_cls_tokens=1,
+        #     pos_embed_fn=partial(SpatioTemporalPosEmbeddingHelper, learnable=True),
+        #     thermal_stem=thermal_stem,
+        # )
+
+        # imu_stem = PatchEmbedGeneric(
+        #     [
+        #         nn.Linear(
+        #             in_features=48,
+        #             out_features=imu_embed_dim,
+        #             bias=False,
+        #         ),
+        #     ],
+        #     norm_layer=nn.LayerNorm(normalized_shape=imu_embed_dim),
+        # )
+
+        # imu_preprocessor = IMUPreprocessor(
+        #     img_size=[6, 2000],
+        #     num_cls_tokens=1,
+        #     kernel_size=8,
+        #     embed_dim=imu_embed_dim,
+        #     pos_embed_fn=partial(SpatioTemporalPosEmbeddingHelper, learnable=True),
+        #     imu_stem=imu_stem,
+        # )
 
         return nn.ModuleDict(modality_preprocessors)
 
@@ -270,22 +308,26 @@ class ImageBindModel(nn.Module):
         text_embed_dim=768,
         text_num_blocks=12,
         text_num_heads=12,
-        audio_embed_dim=768,
-        audio_num_blocks=12,
-        audio_num_heads=12,
-        audio_drop_path=0.0,
-        depth_embed_dim=768,
-        depth_num_blocks=12,
-        depth_num_heads=12,
-        depth_drop_path=0.0,
-        thermal_embed_dim=768,
-        thermal_num_blocks=12,
-        thermal_num_heads=12,
-        thermal_drop_path=0.0,
-        imu_embed_dim=512,
-        imu_num_blocks=6,
-        imu_num_heads=8,
-        imu_drop_path=0.7,
+        shape_embed_dim=256,
+        shape_trans_dim=384,
+        shape_num_blocks=12,
+        shape_num_heads=12
+        # audio_embed_dim=768,
+        # audio_num_blocks=12,
+        # audio_num_heads=12,
+        # audio_drop_path=0.0,
+        # depth_embed_dim=768,
+        # depth_num_blocks=12,
+        # depth_num_heads=12,
+        # depth_drop_path=0.0,
+        # thermal_embed_dim=768,
+        # thermal_num_blocks=12,
+        # thermal_num_heads=12,
+        # thermal_drop_path=0.0,
+        # imu_embed_dim=512,
+        # imu_num_blocks=6,
+        # imu_num_heads=8,
+        # imu_drop_path=0.7,
     ):
         def instantiate_trunk(
             embed_dim, num_blocks, num_heads, pre_transformer_ln, add_bias_kv, drop_path
@@ -328,38 +370,47 @@ class ImageBindModel(nn.Module):
             add_bias_kv=False,
             drop_path=0.0,
         )
-        modality_trunks[ModalityType.AUDIO] = instantiate_trunk(
-            audio_embed_dim,
-            audio_num_blocks,
-            audio_num_heads,
+        modality_trunks[ModalityType.SHAPE] = instantiate_trunk(
+            shape_trans_dim,
+            shape_num_blocks,
+            shape_num_heads,
             pre_transformer_ln=False,
-            add_bias_kv=True,
-            drop_path=audio_drop_path,
+            add_bias_kv=False,
+            drop_path=0.0,
         )
-        modality_trunks[ModalityType.DEPTH] = instantiate_trunk(
-            depth_embed_dim,
-            depth_num_blocks,
-            depth_num_heads,
-            pre_transformer_ln=False,
-            add_bias_kv=True,
-            drop_path=depth_drop_path,
-        )
-        modality_trunks[ModalityType.THERMAL] = instantiate_trunk(
-            thermal_embed_dim,
-            thermal_num_blocks,
-            thermal_num_heads,
-            pre_transformer_ln=False,
-            add_bias_kv=True,
-            drop_path=thermal_drop_path,
-        )
-        modality_trunks[ModalityType.IMU] = instantiate_trunk(
-            imu_embed_dim,
-            imu_num_blocks,
-            imu_num_heads,
-            pre_transformer_ln=False,
-            add_bias_kv=True,
-            drop_path=imu_drop_path,
-        )
+        
+        # modality_trunks[ModalityType.AUDIO] = instantiate_trunk(
+        #     audio_embed_dim,
+        #     audio_num_blocks,
+        #     audio_num_heads,
+        #     pre_transformer_ln=False,
+        #     add_bias_kv=True,
+        #     drop_path=audio_drop_path,
+        # )
+        # modality_trunks[ModalityType.DEPTH] = instantiate_trunk(
+        #     depth_embed_dim,
+        #     depth_num_blocks,
+        #     depth_num_heads,
+        #     pre_transformer_ln=False,
+        #     add_bias_kv=True,
+        #     drop_path=depth_drop_path,
+        # )
+        # modality_trunks[ModalityType.THERMAL] = instantiate_trunk(
+        #     thermal_embed_dim,
+        #     thermal_num_blocks,
+        #     thermal_num_heads,
+        #     pre_transformer_ln=False,
+        #     add_bias_kv=True,
+        #     drop_path=thermal_drop_path,
+        # )
+        # modality_trunks[ModalityType.IMU] = instantiate_trunk(
+        #     imu_embed_dim,
+        #     imu_num_blocks,
+        #     imu_num_heads,
+        #     pre_transformer_ln=False,
+        #     add_bias_kv=True,
+        #     drop_path=imu_drop_path,
+        # )
 
         return nn.ModuleDict(modality_trunks)
 
@@ -368,10 +419,11 @@ class ImageBindModel(nn.Module):
         out_embed_dim,
         vision_embed_dim,
         text_embed_dim,
-        audio_embed_dim,
-        depth_embed_dim,
-        thermal_embed_dim,
-        imu_embed_dim,
+        # audio_embed_dim,
+        # depth_embed_dim,
+        # thermal_embed_dim,
+        # imu_embed_dim,
+        shape_trans_dim,
     ):
         modality_heads = {}
 
@@ -388,30 +440,38 @@ class ImageBindModel(nn.Module):
             )
         )
 
-        modality_heads[ModalityType.AUDIO] = nn.Sequential(
-            nn.LayerNorm(normalized_shape=audio_embed_dim, eps=1e-6),
-            SelectElement(index=0),
-            nn.Linear(audio_embed_dim, out_embed_dim, bias=False),
-        )
-
-        modality_heads[ModalityType.DEPTH] = nn.Sequential(
-            nn.LayerNorm(normalized_shape=depth_embed_dim, eps=1e-6),
-            SelectElement(index=0),
-            nn.Linear(depth_embed_dim, out_embed_dim, bias=False),
-        )
-
-        modality_heads[ModalityType.THERMAL] = nn.Sequential(
-            nn.LayerNorm(normalized_shape=thermal_embed_dim, eps=1e-6),
-            SelectElement(index=0),
-            nn.Linear(thermal_embed_dim, out_embed_dim, bias=False),
-        )
-
-        modality_heads[ModalityType.IMU] = nn.Sequential(
-            nn.LayerNorm(normalized_shape=imu_embed_dim, eps=1e-6),
+        modality_heads[ModalityType.SHAPE] = nn.Sequential(
+            nn.LayerNorm(normalized_shape=shape_trans_dim, eps=1e-6),
             SelectElement(index=0),
             nn.Dropout(p=0.5),
-            nn.Linear(imu_embed_dim, out_embed_dim, bias=False),
+            nn.Linear(shape_trans_dim, out_embed_dim, bias=False),
         )
+        
+        # modality_heads[ModalityType.AUDIO] = nn.Sequential(
+        #     nn.LayerNorm(normalized_shape=audio_embed_dim, eps=1e-6),
+        #     SelectElement(index=0),
+        #     nn.Linear(audio_embed_dim, out_embed_dim, bias=False),
+        # )
+
+        # modality_heads[ModalityType.DEPTH] = nn.Sequential(
+        #     nn.LayerNorm(normalized_shape=depth_embed_dim, eps=1e-6),
+        #     SelectElement(index=0),
+        #     nn.Linear(depth_embed_dim, out_embed_dim, bias=False),
+        # )
+
+        # modality_heads[ModalityType.THERMAL] = nn.Sequential(
+        #     nn.LayerNorm(normalized_shape=thermal_embed_dim, eps=1e-6),
+        #     SelectElement(index=0),
+        #     nn.Linear(thermal_embed_dim, out_embed_dim, bias=False),
+        # )
+
+        # modality_heads[ModalityType.IMU] = nn.Sequential(
+        #     nn.LayerNorm(normalized_shape=imu_embed_dim, eps=1e-6),
+        #     SelectElement(index=0),
+        #     nn.Dropout(p=0.5),
+        #     nn.Linear(imu_embed_dim, out_embed_dim, bias=False),
+        # )
+
 
         return nn.ModuleDict(modality_heads)
 
@@ -422,28 +482,38 @@ class ImageBindModel(nn.Module):
         modality_postprocessors[ModalityType.TEXT] = nn.Sequential(
             Normalize(dim=-1), LearnableLogitScaling(learnable=True)
         )
-        modality_postprocessors[ModalityType.AUDIO] = nn.Sequential(
+        modality_postprocessors[ModalityType.SHAPE] = nn.Sequential(
             Normalize(dim=-1),
-            LearnableLogitScaling(logit_scale_init=20.0, learnable=False),
+            # LearnableLogitScaling()
         )
-        modality_postprocessors[ModalityType.DEPTH] = nn.Sequential(
-            Normalize(dim=-1),
-            LearnableLogitScaling(logit_scale_init=5.0, learnable=False),
-        )
-        modality_postprocessors[ModalityType.THERMAL] = nn.Sequential(
-            Normalize(dim=-1),
-            LearnableLogitScaling(logit_scale_init=10.0, learnable=False),
-        )
-        modality_postprocessors[ModalityType.IMU] = nn.Sequential(
-            Normalize(dim=-1),
-            LearnableLogitScaling(logit_scale_init=5.0, learnable=False),
-        )
+        # modality_postprocessors[ModalityType.AUDIO] = nn.Sequential(
+        #     Normalize(dim=-1),
+        #     LearnableLogitScaling(logit_scale_init=20.0, learnable=False),
+        # )
+        # modality_postprocessors[ModalityType.DEPTH] = nn.Sequential(
+        #     Normalize(dim=-1),
+        #     LearnableLogitScaling(logit_scale_init=5.0, learnable=False),
+        # )
+        # modality_postprocessors[ModalityType.THERMAL] = nn.Sequential(
+        #     Normalize(dim=-1),
+        #     LearnableLogitScaling(logit_scale_init=10.0, learnable=False),
+        # )
+        # modality_postprocessors[ModalityType.IMU] = nn.Sequential(
+        #     Normalize(dim=-1),
+        #     LearnableLogitScaling(logit_scale_init=5.0, learnable=False),
+        # )
 
         return nn.ModuleDict(modality_postprocessors)
 
     def forward(self, inputs):
         outputs = {}
+        # Image일 때 freeze 하도록
+
+        # breakpoint()
+
         for modality_key, modality_value in inputs.items():
+
+            # breakpoint()
             reduce_list = (
                 modality_value.ndim >= 5
             )  # Audio and Video inputs consist of multiple clips
@@ -454,12 +524,14 @@ class ImageBindModel(nn.Module):
                 )
 
             if modality_value is not None:
+                # breakpoint()
                 modality_value = self.modality_preprocessors[modality_key](
                     **{modality_key: modality_value}
                 )
                 trunk_inputs = modality_value["trunk"]
                 head_inputs = modality_value["head"]
-                modality_value = self.modality_trunks[modality_key](**trunk_inputs)
+                modality_value = self.modality_trunks[modality_key](
+                    **trunk_inputs)
                 modality_value = self.modality_heads[modality_key](
                     modality_value, **head_inputs
                 )
@@ -475,8 +547,9 @@ class ImageBindModel(nn.Module):
 
         return outputs
 
-
-def imagebind_huge(pretrained=False):
+import pdb
+def imagebind_huge(pretrained=False, device="cuda:0", model_path=".checkpoints/imagebind_huge.pth"):
+    
     model = ImageBindModel(
         vision_embed_dim=1280,
         vision_num_blocks=32,
@@ -484,12 +557,17 @@ def imagebind_huge(pretrained=False):
         text_embed_dim=1024,
         text_num_blocks=24,
         text_num_heads=16,
+        shape_embed_dim=256,
+        shape_trans_dim=384,
+        shape_num_blocks=12,
+        shape_num_heads=12,
         out_embed_dim=1024,
-        audio_drop_path=0.1,
-        imu_drop_path=0.7,
+        dvae_device = device
+        # audio_drop_path=0.1,
+        # imu_drop_path=0.7,
     )
-
-    if pretrained:
+    # breakpoint()
+    if pretrained and model_path == ".checkpoints/imagebind_huge.pth":
         if not os.path.exists(".checkpoints/imagebind_huge.pth"):
             print(
                 "Downloading imagebind weights to .checkpoints/imagebind_huge.pth ..."
@@ -501,7 +579,36 @@ def imagebind_huge(pretrained=False):
                 progress=True,
             )
 
-        model.load_state_dict(torch.load(".checkpoints/imagebind_huge.pth"))
+        # breakpoint()
+        model.load_state_dict(torch.load(
+            ".checkpoints/imagebind_huge.pth", map_location=device), strict=False)
+        
+    elif pretrained:
+
+        # Load the checkpoint
+        checkpoint = torch.load(model_path, map_location=device)
+
+        # If your checkpoint is a dictionary with more than just the state_dict
+        checkpoint_state_dict = checkpoint['state_dict']  # or whatever the correct key is
+
+        # Then modify the keys
+        new_state_dict = {key.replace('model.', ''): value for key, value in checkpoint_state_dict.items()}
+
+        # And then load it into the model
+        # breakpoint()
+        model.load_state_dict(new_state_dict, strict=False)
+
+    ########################################################################################
+
+    # with open('output_huge_imagebind.txt', 'w') as file:
+    #     print(torch.load(".checkpoints/imagebind_huge.pth"), file=file)
+
+    # with open('output_model_path.txt', 'w') as file:
+    #     print(torch.load(model_path), file=file)
+
+
+    ########################################################################################
+    # breakpoint()
 
     return model
 
@@ -512,9 +619,11 @@ def save_module(module_dict: nn.ModuleDict, module_name: str = "",
     try:
         torch.save(module_dict.state_dict(),
                    os.path.join(checkpoint_dir, f"imagebind-{module_name}{postfix}.{extension}"))
-        logging.info(f"Saved parameters for module {module_name} to {checkpoint_dir}.")
+        logging.info(
+            f"Saved parameters for module {module_name} to {checkpoint_dir}.")
     except FileNotFoundError:
-        logging.warning(f"Could not save module parameters for {module_name} to {checkpoint_dir}.")
+        logging.warning(
+            f"Could not save module parameters for {module_name} to {checkpoint_dir}.")
 
 
 def load_module(module_dict: nn.ModuleDict, module_name: str = "",
@@ -522,7 +631,9 @@ def load_module(module_dict: nn.ModuleDict, module_name: str = "",
                 extension: str = "pth"):
     try:
         module_dict.load_state_dict(torch.load(
-                   os.path.join(checkpoint_dir, f"imagebind-{module_name}{postfix}.{extension}")), strict=False)
-        logging.info(f"Loaded parameters for module {module_name} from {checkpoint_dir}.")
+            os.path.join(checkpoint_dir, f"imagebind-{module_name}{postfix}.{extension}")), strict=False)
+        logging.info(
+            f"Loaded parameters for module {module_name} from {checkpoint_dir}.")
     except FileNotFoundError:
-        logging.warning(f"Could not load module parameters for {module_name} from {checkpoint_dir}.")
+        logging.warning(
+            f"Could not load module parameters for {module_name} from {checkpoint_dir}.")

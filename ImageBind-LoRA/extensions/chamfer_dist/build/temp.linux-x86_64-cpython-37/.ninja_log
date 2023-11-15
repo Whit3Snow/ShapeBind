@@ -1,0 +1,8 @@
+# ninja log v5
+1	25974	1698335488157163432	/root/shapebind-v1/Point-BERT/extensions/chamfer_dist/build/temp.linux-x86_64-cpython-37/chamfer_cuda.o	23d15fe8d9b8ad5d
+51	30321	1698337878723776810	/root/shapebind-v1/Point-BERT/extensions/chamfer_dist/build/temp.linux-x86_64-cpython-37/chamfer_cuda.o	2e209f661b6ea60c
+50	70599	1698337919003961185	/root/shapebind-v1/Point-BERT/extensions/chamfer_dist/build/temp.linux-x86_64-cpython-37/chamfer.o	faac2dce6edc1692
+52	27148	1698393225986555948	/root/shapebind-v1/Point-BERT/extensions/chamfer_dist/build/temp.linux-x86_64-cpython-37/chamfer_cuda.o	35a9ae702c0cd252
+51	68215	1698393267058796226	/root/shapebind-v1/Point-BERT/extensions/chamfer_dist/build/temp.linux-x86_64-cpython-37/chamfer.o	ee36b3fde41f40ce
+41	34647	1698393953217788580	/root/shapebind-v1/Point-BERT/extensions/chamfer_dist/build/temp.linux-x86_64-cpython-37/chamfer_cuda.o	2e209f661b6ea60c
+40	74524	1698393993117575999	/root/shapebind-v1/Point-BERT/extensions/chamfer_dist/build/temp.linux-x86_64-cpython-37/chamfer.o	faac2dce6edc1692

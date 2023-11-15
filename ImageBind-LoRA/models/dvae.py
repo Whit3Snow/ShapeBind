@@ -1,3 +1,4 @@
+import pdb
 import torch.nn as nn
 import torch
 import torch.nn.functional as F
@@ -7,8 +8,8 @@ from .build import MODELS
 from utils import misc
 from extensions.chamfer_dist import ChamferDistanceL1, ChamferDistanceL2
 # from extensions.emd import emd
-from utils.checkpoint import get_missing_parameters_message, get_unexpected_parameters_message
-from utils.logger import *
+# from utils.checkpoint import get_missing_parameters_message, get_unexpected_parameters_message
+# from utils.logger import *
 
 
 from knn_cuda import KNN
@@ -171,9 +172,12 @@ class Group(nn.Module):
             output: B G M 3
             center : B G 3
         '''
+        # xyz = xyz.unsqueeze(dim=0).float()
+        xyz = xyz.float()
+        # breakpoint()
         batch_size, num_points, _ = xyz.shape
         # fps the centers out
-        center = misc.fps(xyz, self.num_group)  # B G 3
+        center = misc.fps(xyz.float(), self.num_group)  # B G 3
         # knn to get the neighborhood
         # _, idx = self.knn(xyz, center) # B G M
         idx = knn_point(self.group_size, xyz, center)  # B G M
@@ -300,13 +304,13 @@ class Decoder(nn.Module):
 class DiscreteVAE(nn.Module):
     def __init__(self, config, **kwargs):
         super().__init__()
-        self.group_size = config.group_size
-        self.num_group = config.num_group
-        self.encoder_dims = config.encoder_dims
-        self.tokens_dims = config.tokens_dims
+        self.group_size = config["group_size"]
+        self.num_group = config["num_group"]
+        self.encoder_dims = config["encoder_dims"]
+        self.tokens_dims = config["tokens_dims"]
 
-        self.decoder_dims = config.decoder_dims
-        self.num_tokens = config.num_tokens
+        self.decoder_dims = config["decoder_dims"]
+        self.num_tokens = config["num_tokens"]
 
         self.group_divider = Group(
             num_group=self.num_group, group_size=self.group_size)

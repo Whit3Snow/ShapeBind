@@ -5,6 +5,7 @@
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
 
+import pdb
 import torch.nn.functional as F
 from models.dvae import DiscreteVAE, Group
 import gzip
@@ -306,20 +307,20 @@ class RGBDTPreprocessor(VerboseNNModule):
         return return_dict
 
 
-class AudioPreprocessor(RGBDTPreprocessor):
-    def __init__(self, audio_stem: PatchEmbedGeneric, **kwargs) -> None:
-        super().__init__(rgbt_stem=audio_stem, depth_stem=None, **kwargs)
+# class AudioPreprocessor(RGBDTPreprocessor):
+#     def __init__(self, audio_stem: PatchEmbedGeneric, **kwargs) -> None:
+#         super().__init__(rgbt_stem=audio_stem, depth_stem=None, **kwargs)
 
-    def forward(self, audio=None):
-        return super().forward(vision=audio)
+#     def forward(self, audio=None):
+#         return super().forward(vision=audio)
 
 
-class ThermalPreprocessor(RGBDTPreprocessor):
-    def __init__(self, thermal_stem: PatchEmbedGeneric, **kwargs) -> None:
-        super().__init__(rgbt_stem=thermal_stem, depth_stem=None, **kwargs)
+# class ThermalPreprocessor(RGBDTPreprocessor):
+#     def __init__(self, thermal_stem: PatchEmbedGeneric, **kwargs) -> None:
+#         super().__init__(rgbt_stem=thermal_stem, depth_stem=None, **kwargs)
 
-    def forward(self, thermal=None):
-        return super().forward(vision=thermal)
+#     def forward(self, thermal=None):
+#         return super().forward(vision=thermal)
 
 
 def build_causal_attention_mask(context_length):
@@ -617,87 +618,87 @@ class SimpleTokenizer(object):
         return result
 
 
-class IMUPreprocessor(VerboseNNModule):
-    def __init__(
-        self,
-        kernel_size: int,
-        imu_stem: PatchEmbedGeneric,
-        embed_dim: int,
-        img_size: Tuple = (6, 2000),
-        num_cls_tokens: int = 1,
-        pos_embed_fn: Optional[Callable] = None,
-        init_param_style: str = "openclip",
-    ) -> None:
-        super().__init__()
-        self.imu_stem = imu_stem
-        self.embed_dim = embed_dim
-        self.use_pos_embed = pos_embed_fn is not None
-        self.num_cls_tokens = num_cls_tokens
-        self.kernel_size = kernel_size
-        self.pos_embed = nn.Parameter(
-            torch.empty(1, (img_size[1] // kernel_size) +
-                        num_cls_tokens, embed_dim)
-        )
+# class IMUPreprocessor(VerboseNNModule):
+#     def __init__(
+#         self,
+#         kernel_size: int,
+#         imu_stem: PatchEmbedGeneric,
+#         embed_dim: int,
+#         img_size: Tuple = (6, 2000),
+#         num_cls_tokens: int = 1,
+#         pos_embed_fn: Optional[Callable] = None,
+#         init_param_style: str = "openclip",
+#     ) -> None:
+#         super().__init__()
+#         self.imu_stem = imu_stem
+#         self.embed_dim = embed_dim
+#         self.use_pos_embed = pos_embed_fn is not None
+#         self.num_cls_tokens = num_cls_tokens
+#         self.kernel_size = kernel_size
+#         self.pos_embed = nn.Parameter(
+#             torch.empty(1, (img_size[1] // kernel_size) +
+#                         num_cls_tokens, embed_dim)
+#         )
 
-        if self.num_cls_tokens > 0:
-            self.cls_token = nn.Parameter(
-                torch.zeros(1, self.num_cls_tokens, self.embed_dim)
-            )
+#         if self.num_cls_tokens > 0:
+#             self.cls_token = nn.Parameter(
+#                 torch.zeros(1, self.num_cls_tokens, self.embed_dim)
+#             )
 
-        self.init_parameters(init_param_style)
+#         self.init_parameters(init_param_style)
 
-    @torch.no_grad()
-    def init_parameters(self, init_param_style):
-        nn.init.normal_(self.pos_embed, std=0.01)
+#     @torch.no_grad()
+#     def init_parameters(self, init_param_style):
+#         nn.init.normal_(self.pos_embed, std=0.01)
 
-        if init_param_style == "openclip":
-            # OpenCLIP style initialization
-            scale = self.embed_dim**-0.5
+#         if init_param_style == "openclip":
+#             # OpenCLIP style initialization
+#             scale = self.embed_dim**-0.5
 
-            if self.num_cls_tokens > 0:
-                nn.init.normal_(self.cls_token)
-                self.cls_token *= scale
-        elif init_param_style == "vit":
-            self.cls_token.data.fill_(0)
-        else:
-            raise ValueError(f"Unknown init {init_param_style}")
+#             if self.num_cls_tokens > 0:
+#                 nn.init.normal_(self.cls_token)
+#                 self.cls_token *= scale
+#         elif init_param_style == "vit":
+#             self.cls_token.data.fill_(0)
+#         else:
+#             raise ValueError(f"Unknown init {init_param_style}")
 
-    def tokenize_input_and_cls_pos(self, input, stem):
-        # tokens is of shape B x L x D
-        tokens = stem.norm_layer(stem.proj(input))
-        assert tokens.ndim == 3
-        assert tokens.shape[2] == self.embed_dim
-        B = tokens.shape[0]
-        if self.num_cls_tokens > 0:
-            class_tokens = self.cls_token.expand(
-                B, -1, -1
-            )  # stole class_tokens impl from Phil Wang, thanks
-            tokens = torch.cat((class_tokens, tokens), dim=1)
-        if self.use_pos_embed:
-            tokens = tokens + self.pos_embed
-        return tokens
+#     def tokenize_input_and_cls_pos(self, input, stem):
+#         # tokens is of shape B x L x D
+#         tokens = stem.norm_layer(stem.proj(input))
+#         assert tokens.ndim == 3
+#         assert tokens.shape[2] == self.embed_dim
+#         B = tokens.shape[0]
+#         if self.num_cls_tokens > 0:
+#             class_tokens = self.cls_token.expand(
+#                 B, -1, -1
+#             )  # stole class_tokens impl from Phil Wang, thanks
+#             tokens = torch.cat((class_tokens, tokens), dim=1)
+#         if self.use_pos_embed:
+#             tokens = tokens + self.pos_embed
+#         return tokens
 
-    def forward(self, imu):
-        # Patchify
-        imu = imu.unfold(
-            -1,
-            self.kernel_size,
-            self.kernel_size,
-        ).permute(0, 2, 1, 3)
-        imu = imu.reshape(imu.size(0), imu.size(1), -1)
+#     def forward(self, imu):
+#         # Patchify
+#         imu = imu.unfold(
+#             -1,
+#             self.kernel_size,
+#             self.kernel_size,
+#         ).permute(0, 2, 1, 3)
+#         imu = imu.reshape(imu.size(0), imu.size(1), -1)
 
-        imu_tokens = self.tokenize_input_and_cls_pos(
-            imu,
-            self.imu_stem,
-        )
+#         imu_tokens = self.tokenize_input_and_cls_pos(
+#             imu,
+#             self.imu_stem,
+#         )
 
-        return_dict = {
-            "trunk": {
-                "tokens": imu_tokens,
-            },
-            "head": {},
-        }
-        return return_dict
+#         return_dict = {
+#             "trunk": {
+#                 "tokens": imu_tokens,
+#             },
+#             "head": {},
+#         }
+#         return return_dict
 
 
 # =========================== new implement(JHJ) ========================================================
@@ -706,38 +707,42 @@ class IMUPreprocessor(VerboseNNModule):
 # JHJ: DVAE 넣고, pretrained parameter -->
 
 
-config = {    
-    "group_size": 32, 
-    "num_group": 64, 
+config = {
+    "group_size": 32,
+    "num_group": 64,
     "encoder_dims": 256,
     "num_tokens": 8192,
-    "tokens_dims": 256, 
-    "decoder_dims": 256, 
-    "ckpt": 'Need to be set' # set the dVAE weight here
+    "tokens_dims": 256,
+    "decoder_dims": 256,
+    "ckpt": 'Need to be set'  # set the dVAE weight here
 }
-   
+
 
 class Point3DPreprocessor(VerboseNNModule):
     def __init__(self, logit_dim: int,
                  embed_dim: int,
-                causal_masking: bool,
+                 trans_dim: int,
+                 causal_masking: bool,
                  dvae_ckpt,
                  init_param_style: str = "openclip",
+                 dvae_device : str = "cuda:1"
                  ):
         super().__init__()
 
+        self.device = dvae_device
         self.embed_dim = embed_dim
-
+        self.trans_dim = trans_dim
+        self.increase_layer = nn.Linear(self.embed_dim,  self.trans_dim)
         # cls_token
-        self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
+        self.cls_token = nn.Parameter(torch.zeros(1, 1, trans_dim))
 
         # pos_token
-        self.cls_pos = nn.Parameter(torch.randn(1, 1, embed_dim))
+        self.cls_pos = nn.Parameter(torch.randn(1, 1, trans_dim))
         # position_embedding
         self.pos_embed = nn.Sequential(
             nn.Linear(3, 128),
             nn.GELU(),
-            nn.Linear(128, self.trans_dim)
+            nn.Linear(128, trans_dim)
         )
 
         self.dvae = DiscreteVAE(config)
@@ -749,23 +754,22 @@ class Point3DPreprocessor(VerboseNNModule):
             mask = build_causal_attention_mask(self.context_length)
             # register the mask as a buffer so it can be moved to the right device
             self.register_buffer("mask", mask)
-        
 
     def _prepare_dvae(self):
-        ckpt = torch.load(self.dvae_ckpt, map_location='cpu')
+        # 원하는 device로 로드하도록 나중에 설정
+        ckpt = torch.load(self.dvae_ckpt, map_location = self.device)
+        # ckpt = torch.load(self.dvae_ckpt)
         base_ckpt = {k.replace("module.", ""): v for k,
                      v in ckpt['base_model'].items()}
         self.dvae.load_state_dict(base_ckpt, strict=True)
 
-
     @torch.no_grad()
     def init_parameters(self, init_param_style="openclip"):
-        self._prepare_dvae() # get the pretrained parameters
-
-        nn.init.normal_(self.pos_embed, std=0.01)
+        self._prepare_dvae()  # get the pretrained parameters
 
         for m in self.pos_embed:
-            nn.init.normal_(m.weight, std=0.02)
+            if not isinstance(m, nn.GELU):
+                nn.init.normal_(m.weight, std=0.02)
 
         if init_param_style == "openclip":
             scale = self.embed_dim**-0.5
@@ -775,27 +779,28 @@ class Point3DPreprocessor(VerboseNNModule):
         else:
             raise ValueError(f"Unknown init {init_param_style}")
 
-    def forward(self, pointcloud, inp, temperature=1., hard=False):
+    def forward(self, shape, temperature=1., hard=False):
         # 여기서 살짝 바꿀 수 있도록 학습하기
 
         # point bert에 있는 모델
-        neighborhood, center = self.dvae.group_divider(inp)
+        neighborhood, center = self.dvae.group_divider(shape)
         gt_logits = self.dvae.encoder(neighborhood)  # B G C / mini pointnet
-        gt_logits = self.dvae.dgcnn_1(gt_logits, center)  # B G N / tokenizer 
+        gt_logits = self.dvae.dgcnn_1(gt_logits, center)  # B G N / tokenizer
 
         soft_one_hot = F.gumbel_softmax(
-            gt_logits, tau=temperature, dim=2, hard=hard)  # B G N / tokenizer 
+            gt_logits, tau=temperature, dim=2, hard=hard)  # B G N / tokenizer
         point_tokens = torch.einsum('b g n, n c -> b g c',
-                               soft_one_hot, self.dvae.codebook)  # B G C / embedding layer
+                                    soft_one_hot, self.dvae.codebook)  # B G C / embedding layer
 
-
-        # cls tokens 
+        # cls tokens
         cls_tokens = self.cls_token.expand(gt_logits.size(0), -1, -1)
         cls_pos = self.cls_pos.expand(gt_logits.size(0), -1, -1)
 
         # pos token
         pos = self.pos_embed(center)
 
+        # match the dim
+        point_tokens = self.increase_layer(point_tokens)
         # final input
         point_tokens = torch.cat((cls_tokens, point_tokens), dim=1)
         pos = torch.cat((cls_pos, pos), dim=1)
