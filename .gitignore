@@ -1,5 +1,7 @@
 ImageBind-LoRA/.checkpoints/dVAE.pth
 ImageBind-LoRA/.checkpoints/imagebind_huge.pth
+ImageBind-LoRA/.logs/
+
 
 *.out
 *.pkl
