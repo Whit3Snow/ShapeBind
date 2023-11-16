@@ -85,7 +85,7 @@ pc_paths=[".assets/crosspoint_ply/chair.ply",
 # model = imagebind_model.imagebind_huge(pretrained=True, device=device, model_path="/root/volume/.checkpoints/3d_2d_full_1024/last.ckpt")
 
 # breakpoint()
-model = imagebind_model.imagebind_huge(pretrained=True, device=device, model_path="/root/volume/.checkpoints/3d_2d_full_1024_v3/shapebind-epoch=09-val_loss=0.84.ckpt")
+model = imagebind_model.imagebind_huge(pretrained=True, device=device, model_path="/root/volume/.checkpoints/3d_2d_full_1024_v3/shapebind-epoch=26-val_loss=0.54.ckpt")
 # with open('output_loaded_model.txt', 'w') as f:
 #     for name, child in model.named_children():
 #         for param in child.parameters():
