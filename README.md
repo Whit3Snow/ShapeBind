@@ -1,23 +1,21 @@
 # ShapeBind
 
-## Description
-
-  * ## CS479 project 
-
-    
-
 
 ## Environment
 ```
 conda create --name shapebind python=3.8.18 -y
 conda activate shapebind
-pip install 
 ```
+--> same installing Imagebind [Github](https://github.com/facebookresearch/ImageBind#usage)
+
 
 ## Files 
 ```
-models/
-
+./Imagebind_LoRA
+├──models
+├──evaluations
+├──datasets
+├──changeit3d_model
 
 deepspeed_train_3d_text.py
 deepspeed_train_3d_decoder.py
@@ -27,6 +25,11 @@ zeroshot_classification_shapetalk.py
 ```
 
 ## Usage
+* Download data
+
+    downlaod shapetalk data: [Gitub](https://github.com/optas/changeit3d#shapetalk-dataset--rocket-)
+
+
 * training 3d-text binding model
 ```
 cd Imagebind_LoRA
@@ -51,6 +54,12 @@ python zeroshot_classification_shapetalk.py
 ```
 Imagebind_LoRA/interpolation.ipynb
 ```
+
+## Result
+#### Embedding space(T-sne)
+![embed](./images/tsne.PNG)
+#### Editing
+![edit](./images/interpolation.png)
 
 
 ## Citing Shapebind
