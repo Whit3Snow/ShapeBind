@@ -39,6 +39,9 @@ from models import imagebind_model
 from models import lora as LoRA
 from models.imagebind_model import ModalityType, load_module, save_module
 
+# DeepSpeed Optimizer
+from deepspeed.ops.adam import DeepSpeedCPUAdam
+
 logging.basicConfig(level=logging.INFO, force=True)
 
 from torch.utils.data import Dataset, DataLoader, Sampler, BatchSampler
@@ -60,7 +63,7 @@ class ContrastiveTransformations:
 
 
 class ImageBindTrain(L.LightningModule):
-    def __init__(self, lr=5e-4, weight_decay=1e-4, device="cuda:0", max_epochs=500, batch_size=32, num_workers=4, seed=42,
+    def __init__(self, lr=5e-4, weight_decay=1e-4, max_epochs=500, batch_size=32, num_workers=4, seed=42,
                  self_contrast=False, temperature=0.07,  momentum_betas=(0.9, 0.95),
                  lora=False, lora_rank=4, lora_checkpoint_dir="./.checkpoints/lora",
                  lora_layer_idxs=None, lora_modality_names=None,
@@ -74,7 +77,7 @@ class ImageBindTrain(L.LightningModule):
         self.save_hyperparameters()
 
         # Load full pretrained ImageBind model
-        self.model = imagebind_model.imagebind_huge(pretrained=True, device=device)
+        self.model = imagebind_model.imagebind_huge(pretrained=True)
         
                 
         # Bind to image or bind to text
@@ -126,6 +129,11 @@ class ImageBindTrain(L.LightningModule):
     def configure_optimizers(self):
         optimizer = optim.AdamW(self.parameters(), lr=self.hparams.lr, weight_decay=self.hparams.weight_decay,
                                 betas=self.hparams.momentum_betas)
+
+        # DeepSpeed Optimizer
+        # optimizer = DeepSpeedCPUAdam(self.parameters(), lr=self.hparams.lr, weight_decay=self.hparams.weight_decay,
+        #                         betas=self.hparams.momentum_betas)
+        
         lr_scheduler = optim.lr_scheduler.CosineAnnealingLR(
             optimizer, T_max=self.hparams.max_epochs, eta_min=self.hparams.lr / 50
         )
@@ -355,8 +363,11 @@ if __name__ == "__main__":
     # Set experiment properties
     seed_everything(args.seed, workers=True)
     torch.backends.cudnn.determinstic = True
+
+    # breakpoint()
     device_name = args.device  # "cuda:0" if torch.cuda.is_available() else "cpu"
-    device = torch.device(device_name)
+    # device = torch.device(device_name)
+
 
     contrast_transforms = transforms.Compose(
         [
@@ -420,50 +431,50 @@ if __name__ == "__main__":
     # train_dataset = train_datasets[1]
     # test_dataset = test_datasets[1]
 
-    breakpoint()
-    custom_batch_sampler = CustomBatchSampler(train_dataset.classes, batch_size=12)
-    custom_batch_test_sampler = CustomBatchSampler(test_dataset.classes, batch_size=12)
+    # breakpoint()
+    # custom_batch_sampler = CustomBatchSampler(train_dataset.classes, batch_size=12)
+    # custom_batch_test_sampler = CustomBatchSampler(test_dataset.classes, batch_size=12)
 
-
-    train_loader = DataLoader(
-        train_dataset,
-        batch_sampler = custom_batch_sampler
-    )
 
     # train_loader = DataLoader(
     #     train_dataset,
-    #     batch_size=args.batch_size,
-    #     shuffle=True,
-    #     drop_last=True,
-    #     pin_memory=False,
-    #     num_workers=args.num_workers,
-    #     # batch_sampler = batch_sampler
-    #     # batch_sampler = None
-
+    #     batch_sampler = custom_batch_sampler
     # )
 
-    val_loader = DataLoader(
-        test_dataset,
-        batch_sampler = custom_batch_test_sampler
+    train_loader = DataLoader(
+        train_dataset,
+        batch_size=args.batch_size,
+        shuffle=True,
+        drop_last=True,
+        pin_memory=False,
+        num_workers=args.num_workers,
+        # batch_sampler = batch_sampler
+        # batch_sampler = None
+
     )
 
     # val_loader = DataLoader(
     #     test_dataset,
-    #     batch_size=args.batch_size,
-    #     shuffle=False,
-    #     drop_last=False,
-    #     pin_memory=False,
-    #     num_workers=args.num_workers,
+    #     batch_sampler = custom_batch_test_sampler
     # )
 
-    breakpoint()
-    sample = next(iter(train_loader))
-    print("sample: ", sample)
+    val_loader = DataLoader(
+        test_dataset,
+        batch_size=args.batch_size,
+        shuffle=False,
+        drop_last=False,
+        pin_memory=False,
+        num_workers=args.num_workers,
+    )
 
-    sample1 = next(iter(val_loader))
-    print("sample1: ", sample1)
+    # breakpoint()
+    # sample = next(iter(train_loader))
+    # print("sample: ", sample)
+
+    # sample1 = next(iter(val_loader))
+    # print("sample1: ", sample1)
     
-    breakpoint()
+    # breakpoint()
 
     # Visualize some examples
     if not args.headless:
@@ -499,8 +510,7 @@ if __name__ == "__main__":
             raise ValueError(f"Unknown modality name: {modality_name}")
 
     # Train dataset
-    model = ImageBindTrain(device=args.device,
-                            max_epochs=args.max_epochs, batch_size=args.batch_size, lr=args.lr,
+    model = ImageBindTrain(max_epochs=args.max_epochs, batch_size=args.batch_size, lr=args.lr,
                            weight_decay=args.weight_decay, momentum_betas=args.momentum_betas,
                            temperature=args.temperature,
                            num_workers=args.num_workers, self_contrast=args.self_contrast,
@@ -518,11 +528,26 @@ if __name__ == "__main__":
         checkpointing = {
             "enable_checkpointing": args.full_model_checkpointing, }
 
+    # DDP
+    # from lightning.pytorch.strategies import DDPStrategy
     trainer = Trainer(accelerator="gpu" if "cuda" in device_name else "cpu",
-                      devices=1 if ":" not in device_name else [int(device_name.split(":")[1])], deterministic=True,
+                      devices=1 if ":" not in device_name else [int(idx) for idx in device_name.split(":")[1:]],
+                    #   strategy="ddp",
+                      strategy='ddp_find_unused_parameters_true',
+                    #   strategy=DDPStrategy(find_unused_parameters=True)
+                      deterministic=True,
                       max_epochs=args.max_epochs, gradient_clip_val=args.gradient_clip_val,
                       logger=loggers if loggers else None, **checkpointing)
     
+    # Deepspeed
+    # trainer = Trainer(accelerator="gpu" if "cuda" in device_name else "cpu",
+    #                   devices=1 if ":" not in device_name else [int(idx) for idx in device_name.split(":")[1:]],
+    #                   strategy="deepspeed_stage_2",
+    #                 #   strategy="deepspeed_stage_2_offload", 
+    #                 #   precision=16,
+    #                   deterministic=True,
+    #                   max_epochs=args.max_epochs, gradient_clip_val=args.gradient_clip_val,
+    #                   logger=loggers if loggers else None, **checkpointing)
 
     trainer.fit(model, train_loader, val_loader)
 

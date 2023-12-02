@@ -78,7 +78,7 @@ pc_paths=[
 # model = imagebind_model.imagebind_huge(pretrained=True, device=device, model_path="/root/volume/.checkpoints/3d_2d_full_1024/last.ckpt")
 
 # breakpoint()
-model = imagebind_model.imagebind_huge(pretrained=True, device=device, model_path="/root/volume/.checkpoints/full_1024/last.ckpt")
+model = imagebind_model.imagebind_huge(pretrained=True, device=device, model_path="/root/volume/.checkpoints/deepspeed_3d_text_full_1024_v1/imagebind-epoch=57-val_loss=1.37.ckpt/checkpoint/mp_rank_00_model_states.pt", deepspeed=True)
 # with open('output_loaded_model.txt', 'w') as f:
 #     for name, child in model.named_children():
 #         for param in child.parameters():

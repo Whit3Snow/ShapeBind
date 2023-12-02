@@ -45,7 +45,6 @@ from deepspeed.ops.adam import DeepSpeedCPUAdam
 logging.basicConfig(level=logging.INFO, force=True)
 
 from torch.utils.data import Dataset, DataLoader, Sampler, BatchSampler
-
 import pdb
 
 # Logging settings
@@ -80,7 +79,7 @@ class ImageBindTrain(L.LightningModule):
         self.model = imagebind_model.imagebind_huge(pretrained=True)
         
                 
-        # Bind to image or bind to text
+        # Freeze Vision
 
         for modality_preprocessor in self.model.modality_preprocessors.vision.children():
             modality_preprocessor.requires_grad_(False)
@@ -130,7 +129,7 @@ class ImageBindTrain(L.LightningModule):
         optimizer = optim.AdamW(self.parameters(), lr=self.hparams.lr, weight_decay=self.hparams.weight_decay,
                                 betas=self.hparams.momentum_betas)
 
-        # DeepSpeed Optimizer
+        # DeepSpeed Offload CPU Optimizer
         # optimizer = DeepSpeedCPUAdam(self.parameters(), lr=self.hparams.lr, weight_decay=self.hparams.weight_decay,
         #                         betas=self.hparams.momentum_betas)
         

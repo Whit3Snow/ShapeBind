@@ -8,9 +8,11 @@ lightning_logs/
 logs/
 
 
-
+zeroshot_train_classification_results
+zeroshot_test_classification_results
 
 # 파일 확장자 
 *.log
 *.pkl
 *.npz
+*.txt
