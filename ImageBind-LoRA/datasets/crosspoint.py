@@ -117,7 +117,7 @@ class CrossPointDataset(Dataset):
             with open("crosspoint_test_data_classes.pkl", "rb") as f:
                 classes = pickle.load(f)
 
-        breakpoint()
+        # breakpoint()
         
         return classes
 
@@ -168,17 +168,21 @@ class CrossPointDataset(Dataset):
 from torch.utils.data import Dataset, DataLoader, Sampler, BatchSampler
 import pdb
 
+import random
+
 class CustomBatchSampler():
-    def __init__(self, classes, batch_size):
+    def __init__(self, classes, batch_size, drop_last=False):
         self.batch_size = batch_size
         self.classes = classes
+        self.drop_last = drop_last
+        # breakpoint()
         self.n_batches = sum(len(c) for c in self.classes) // self.batch_size
-
+        # If drop_last is False and there are remaining samples, add an extra batch
+        if not self.drop_last and sum(len(c) for c in self.classes) % self.batch_size != 0:
+            self.n_batches += 1
 
     def __iter__(self):
-
         batches = []
-        breakpoint()
 
         for i in range(self.n_batches):
             batch = []
@@ -190,8 +194,39 @@ class CustomBatchSampler():
                 if len(batch) == self.batch_size:
                     break
 
-            batches.append(batch)
-        
-        # 남은 data들 12에 안 들어가는 것들 추가해 말아???? "Q.jhj"
-        
+            # Check if we need to drop the last batch (if it doesn't fill the batch size)
+            if not self.drop_last or len(batch) == self.batch_size:
+                batches.append(batch)
+
         return iter(batches)
+
+
+
+
+# class CustomBatchSampler():
+#     def __init__(self, classes, batch_size):
+#         self.batch_size = batch_size
+#         self.classes = classes
+#         self.n_batches = sum(len(c) for c in self.classes) // self.batch_size
+
+
+#     def __iter__(self):
+
+#         batches = []
+#         # breakpoint()
+
+#         for i in range(self.n_batches):
+#             batch = []
+#             classes_idx = random.sample(range(len(self.classes)), self.batch_size)
+#             ext_classes = [self.classes[idx] for idx in classes_idx]
+
+#             for class_idx_group in ext_classes:
+#                 batch.append(random.choice(class_idx_group))
+#                 if len(batch) == self.batch_size:
+#                     break
+
+#             batches.append(batch)
+        
+#         # 남은 data들 12에 안 들어가는 것들 추가해 말아???? "Q.jhj"
+        
+#         return iter(batches)

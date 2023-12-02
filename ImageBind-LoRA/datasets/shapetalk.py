@@ -10,7 +10,9 @@ import torch
 import numpy as np
 
 import data
+import pdb
 
+from PIL import Image
 # ShapeTalkDataset
 # 
 # Output of ShapeTalkDataset is a text-shape pair
@@ -54,7 +56,7 @@ class ShapeTalkDataset(Dataset):
         self.sample_points_num = sample_points_num
 
         self.idx = []
-        if pair_type is 'text':
+        if pair_type == 'text' or pair_type == 'edit':
             train_idx, test_idx = train_test_split(range(len(self.df)), train_size=train_size, random_state=random_seed)
 
             if split == 'train':
@@ -66,6 +68,14 @@ class ShapeTalkDataset(Dataset):
         else:
             train_idx, test_idx = train_test_split(self.shape_paths, train_size=train_size, random_state=random_seed)
             
+            # with open("shapetalk_train.txt",'w') as f:
+            #     for string in train_idx:
+            #         f.write(string + '\n')
+            # with open("shapetalk_test.txt",'w') as f:
+            #     for string in test_idx:
+            #         f.write(string + '\n')
+            
+            # breakpoint()
             if split == 'train':
                 self.idx = train_idx
             elif split == 'test':
@@ -110,7 +120,7 @@ class ShapeTalkDataset(Dataset):
             with open("shapetalk_test_data_classes.pkl", "rb") as f:
                 classes = pickle.load(f)
 
-        breakpoint()
+        # breakpoint()
         return classes
 
 
@@ -134,11 +144,14 @@ class ShapeTalkDataset(Dataset):
     def __getitem__(self, index):
         idx = self.idx[index]
 
-        if self.pair_type is 'text':
+        if self.pair_type == 'text':
             dt = self.df.loc[idx]
 
             shape_path = os.path.join(self.root_dir, top_shape_dir, dt["target_uid"] + ".npz")
             shape = np.load(shape_path)['pointcloud']
+
+            # Single-line preprocessing
+            # shape = data.load_and_transform_3D([shape], self.device)
 
             # Sample & Normalize
             shape = self.random_sample(shape, self.sample_points_num)
@@ -149,10 +162,41 @@ class ShapeTalkDataset(Dataset):
         
             text = f'This is a {dt["target_object_class"]}. ' + ' '.join(dt[f'utterance_{i}'] for i in range(self.max_utters) if type(dt[f'utterance_{i}']) is str)
             text = data.load_and_transform_text([text], self.device)
+
             return shape, ModalityType.SHAPE, text, ModalityType.TEXT
+        
+        elif self.pair_type == 'edit':
+            dt = self.df.loc[idx]
+
+            shape_path = os.path.join(self.root_dir, top_shape_dir, dt["source_uid"] + ".npz")
+            shape = np.load(shape_path)['pointcloud']
+
+            target = np.load(os.path.join(self.root_dir, top_shape_dir, dt["target_uid"] + ".npz"))['pointcloud']
+            img_path = os.path.join(self.root_dir, top_img_dir, dt["target_uid"] + '.png')
+
+            target_img = data.load_and_transform_vision_data([img_path], self.device, to_tensor=True)
+            target_img = target_img.squeeze(0)
+
+            # Single-line preprocessing
+            # shape = data.load_and_transform_3D([shape], self.device)
+
+            # Sample & Normalize
+            shape = self.random_sample(shape, self.sample_points_num)
+            shape = self.pc_norm(shape)
+
+            target = self.random_sample(target, self.sample_points_num)
+            target = self.pc_norm(target)
+
+            # Point-BERT는 여기서 float()
+            shape = torch.from_numpy(shape).to(self.device)
+        
+            t = f'This is a {dt["target_object_class"]}. ' + ' '.join(dt[f'utterance_{i}'] for i in range(self.max_utters) if type(dt[f'utterance_{i}']) is str)
+            text = data.load_and_transform_text([t], self.device)
+
+            return shape, shape_path, text, t, target, target_img, img_path
         else:
 
-            breakpoint()
+            # breakpoint()
             shape = np.load(idx)['pointcloud']
             img_path = os.path.splitext(idx)[0].split(top_shape_dir)
             img_path = os.path.join(img_path[0], top_img_dir, img_path[1] + '.png')
@@ -162,3 +206,8 @@ class ShapeTalkDataset(Dataset):
             return shape, ModalityType.SHAPE, image, ModalityType.VISION
 
 
+# ShapeTalkDataset(
+#             root_dir=os.path.join("/root/volume/datasets", "shapetalk"), split="train",
+#             sample_points_num = 1024,
+#             pair_type="vision",
+#         )
