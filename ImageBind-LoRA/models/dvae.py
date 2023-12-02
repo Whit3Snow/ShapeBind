@@ -177,7 +177,7 @@ class Group(nn.Module):
         # breakpoint()
         batch_size, num_points, _ = xyz.shape
         # fps the centers out
-        center = misc.fps(xyz.float(), self.num_group)  # B G 3
+        center = misc.fps(xyz, self.num_group)  # B G 3
         # knn to get the neighborhood
         # _, idx = self.knn(xyz, center) # B G M
         idx = knn_point(self.group_size, xyz, center)  # B G M

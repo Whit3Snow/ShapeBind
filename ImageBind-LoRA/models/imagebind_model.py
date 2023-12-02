@@ -24,7 +24,8 @@ from models.multimodal_preprocessors import (
     SpatioTemporalPosEmbeddingHelper,
     TextPreprocessor,
     #  ThermalPreprocessor,
-    Point3DPreprocessor)
+    Point3DPreprocessor,
+    config)
 from models.transformer import MultiheadAttention, SimpleTransformer
 
 import pdb
@@ -148,8 +149,14 @@ class ImageBindModel(nn.Module):
         )
 
         self.modality_postprocessors = self._create_modality_postprocessors(
+            # shape_trans_dim,
             out_embed_dim
         )
+
+        # self.mlp = nn.Linear(shape_trans_dim, config["num_tokens"])
+        # self.cls = nn.Linear(shape_trans_dim, config["num_class"])
+
+        # self.cel = nn.CrossEntropyLoss()
 
     def _create_modality_preprocessors(
         self,
@@ -528,13 +535,25 @@ class ImageBindModel(nn.Module):
                 modality_value = self.modality_preprocessors[modality_key](
                     **{modality_key: modality_value}
                 )
+
+                # if modality_key == ModalityType.SHAPE:
+                #     outputs["gt_tokens"] = modality_value["gt_tokens"]
+
                 trunk_inputs = modality_value["trunk"]
                 head_inputs = modality_value["head"]
                 modality_value = self.modality_trunks[modality_key](
                     **trunk_inputs)
+                
+                if modality_key == ModalityType.SHAPE:
+                    outputs["output_hidden_states"] = modality_value
+                    
+                    # outputs["segmentation"] = self.seg(modality_value[:, 1:, ...])
+                    # outputs["classification"] = self.cls(modality_value)
+
                 modality_value = self.modality_heads[modality_key](
                     modality_value, **head_inputs
                 )
+
                 modality_value = self.modality_postprocessors[modality_key](
                     modality_value
                 )
@@ -548,7 +567,7 @@ class ImageBindModel(nn.Module):
         return outputs
 
 import pdb
-def imagebind_huge(pretrained=False, device="cuda:0", model_path=".checkpoints/imagebind_huge.pth"):
+def imagebind_huge(pretrained=False, device="cuda:0", model_path=".checkpoints/imagebind_huge.pth", deepspeed=False):
     
     model = ImageBindModel(
         vision_embed_dim=1280,
@@ -588,15 +607,24 @@ def imagebind_huge(pretrained=False, device="cuda:0", model_path=".checkpoints/i
         # Load the checkpoint
         checkpoint = torch.load(model_path, map_location=device)
 
-        # If your checkpoint is a dictionary with more than just the state_dict
-        checkpoint_state_dict = checkpoint['state_dict']  # or whatever the correct key is
+        # breakpoint()
 
-        # Then modify the keys
-        new_state_dict = {key.replace('model.', ''): value for key, value in checkpoint_state_dict.items()}
+        if deepspeed:
+            # deepspeed.DeepSpeedEngine.load_checkpoint(load_dir=model_path, load_module_only=True)
+            checkpoint_state_dict = checkpoint['module']
+
+            # Then modify the keys
+            new_state_dict = {key.replace('_forward_module.model.', ''): value for key, value in checkpoint_state_dict.items()}
+        else:
+            # If your checkpoint is a dictionary with more than just the state_dict
+            checkpoint_state_dict = checkpoint['state_dict']  # or whatever the correct key is
+
+            # Then modify the keys
+            new_state_dict = {key.replace('model.', ''): value for key, value in checkpoint_state_dict.items()}
 
         # And then load it into the model
         # breakpoint()
-        model.load_state_dict(new_state_dict, strict=False)
+        model.load_state_dict(new_state_dict, strict=True)
 
     ########################################################################################
 

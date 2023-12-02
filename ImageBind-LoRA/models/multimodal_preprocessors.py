@@ -712,6 +712,7 @@ config = {
     "num_group": 64,
     "encoder_dims": 256,
     "num_tokens": 8192,
+    # "num_class" : 55,
     "tokens_dims": 256,
     "decoder_dims": 256,
     "ckpt": 'Need to be set'  # set the dVAE weight here
@@ -786,6 +787,7 @@ class Point3DPreprocessor(VerboseNNModule):
         neighborhood, center = self.dvae.group_divider(shape)
         gt_logits = self.dvae.encoder(neighborhood)  # B G C / mini pointnet
         gt_logits = self.dvae.dgcnn_1(gt_logits, center)  # B G N / tokenizer
+        # gt_tokens = torch.argmax(gt_logits, dim=2)
 
         soft_one_hot = F.gumbel_softmax(
             gt_logits, tau=temperature, dim=2, hard=hard)  # B G N / tokenizer
@@ -811,8 +813,8 @@ class Point3DPreprocessor(VerboseNNModule):
             "trunk": {
                 "tokens": point_tokens,
             },
-            "head": {}
-
+            "head": {},
+            # "gt_tokens": gt_tokens,
         }
 
         return return_dict
