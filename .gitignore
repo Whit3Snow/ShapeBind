@@ -5,3 +5,4 @@ ImageBind-LoRA/.logs/
 
 *.out
 *.pkl
+*.npz

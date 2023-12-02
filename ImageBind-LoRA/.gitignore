@@ -4,3 +4,13 @@
 
 # don't track dataset
 .datasets/
+lightning_logs/
+logs/
+
+
+
+
+# 파일 확장자 
+*.log
+*.pkl
+*.npz
