@@ -27,7 +27,7 @@ zeroshot_classification_shapetalk.py
 ## Usage
 * Download data
 
-    downlaod shapetalk data: [Gitub](https://github.com/optas/changeit3d#shapetalk-dataset--rocket-)
+    downlaod shapetalk data: [Github](https://github.com/optas/changeit3d#shapetalk-dataset--rocket-)
 
 
 * training 3d-text binding model
