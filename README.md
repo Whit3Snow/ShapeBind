@@ -3,10 +3,13 @@
 
 ## Environment
 ```
-conda create --name shapebind python=3.8.18 -y
+conda env create -f shapebind_environment.yml
 conda activate shapebind
 ```
---> same installing Imagebind [Github](https://github.com/facebookresearch/ImageBind#usage)
+if you have chamfer distance install error, you can install manually 
+```
+git submodule add https://github.com/ThibaultGROUEIX/ChamferDistancePytorch changeit3d/losses/ChamferDistancePytorch
+```
 
 
 ## Files 
@@ -22,6 +25,7 @@ deepspeed_train_3d_decoder.py
 mgpu_train_3d_text.py
 zeroshot_classification.py
 zeroshot_classification_shapetalk.py
+interpolation.ipynb # you can edit the 3d shape using this file
 ```
 
 ## Usage
