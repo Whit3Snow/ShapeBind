@@ -1,4 +1,11 @@
 # ShapeBind
+This project is from CS479 class in KAIST. 
+Our goal is binding the three modality, 2d. text. 3d. 
+
+![edit](./images/shapebind.png)
+
+  We introduce ShapeBind, a unified embedding space that embrace shape, vision and text modality. Using a similar approach with ImageBind, we show that shapes can be jointly embedded into CLIP latent space including rich and specific semantic information. Leveraging the prior text - vision knowledge from CLIP, we show that simply binding shape with text containing high semantic description of the shape is sufficient.
+
 
 
 ## Environment
@@ -15,17 +22,17 @@ git submodule add https://github.com/ThibaultGROUEIX/ChamferDistancePytorch chan
 ## Files 
 ```
 ./Imagebind_LoRA
-├──models
-├──evaluations
-├──datasets
-├──changeit3d_model
-
-deepspeed_train_3d_text.py
-deepspeed_train_3d_decoder.py
-mgpu_train_3d_text.py
-zeroshot_classification.py
-zeroshot_classification_shapetalk.py
-interpolation.ipynb # you can edit the 3d shape using this file
+├──models ... # model construction
+├──evaluations # evaluation codes
+├──datasets 
+├──changeit3d_model # for editing model but not used.
+------------ # running files # -------------------------
+├──deepspeed_train_3d_text.py
+├──deepspeed_train_3d_decoder.py
+├──mgpu_train_3d_text.py
+├──zeroshot_classification.py
+├──zeroshot_classification_shapetalk.py
+├──interpolation.ipynb # you can edit the 3d shape using this file
 ```
 
 ## Usage
