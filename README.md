@@ -32,14 +32,18 @@ if you have an error please contact us. wkdgywlsrud@kaist.ac.kr, alex6095@kaist.
 ├──mgpu_train_3d_text.py
 ├──zeroshot_classification.py
 ├──zeroshot_classification_shapetalk.py
-├──interpolation.ipynb # you can edit the 3d shape using this file
+├──edit.ipynb # you can edit the 3d shape and modality prompts using this file
+---------- # test files # ------------------------------
+├──test.py # 3D-text
+├──test_3d_2d.py # 3D-image
 ```
 
 ## Usage
 * Download data
 
-    downlaod shapetalk data: [Github](https://github.com/optas/changeit3d#shapetalk-dataset--rocket-)
+    download shapetalk data: [Github](https://github.com/optas/changeit3d#shapetalk-dataset--rocket-)
 
+you can see our arguments' information from helper. 
 
 * training 3d-text binding model
 ```
@@ -63,11 +67,22 @@ python zeroshot_classification_shapetalk.py
 
 * Editing using Slerp
 ```
-Imagebind_LoRA/interpolation.ipynb
+
+Imagebind_LoRA/edit.ipynb
+
+# or you can use 
+interpolation.ipynb # just for interpolation using two shape latents
+```
+
+* testing binding results
+```
+cd Imagebind_LoRA
+python test_3d_2d.py # 3D - image
+python test.py # 3D - test
 ```
 
 ## Result
-#### Embedding space(T-sne)
+#### Embedding space(t-SNE)
 ![embed](./images/tsne.PNG)
 #### Editing
 ![edit](./images/interpolation.png)
