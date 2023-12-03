@@ -42,6 +42,7 @@ if you have an error please contact us. wkdgywlsrud@kaist.ac.kr, alex6095@kaist.
 * Download data
 
     download shapetalk data: [Github](https://github.com/optas/changeit3d#shapetalk-dataset--rocket-)
+    download shapeNet data: [Github](https://github.com/lulutang0608/Point-BERT#dataset)
 
 you can see our arguments' information from helper. 
 
