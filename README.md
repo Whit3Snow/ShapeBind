@@ -2,7 +2,7 @@
 This project is from CS479 class in KAIST. 
 Our goal is binding the three modality, 2d. text. 3d. 
 
-![edit](./images/shapebind.png)
+![edit](./images/shapebind2.png)
 
   We introduce ShapeBind, a unified embedding space that embrace shape, vision and text modality. Using a similar approach with ImageBind, we show that shapes can be jointly embedded into CLIP latent space including rich and specific semantic information. Leveraging the prior text - vision knowledge from CLIP, we show that simply binding shape with text containing high semantic description of the shape is sufficient.
 
