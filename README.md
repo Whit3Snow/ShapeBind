@@ -17,7 +17,7 @@ if you have chamfer distance install error, you can install manually
 ```
 git submodule add https://github.com/ThibaultGROUEIX/ChamferDistancePytorch changeit3d/losses/ChamferDistancePytorch
 ```
-
+if you have an error please contact us. wkdgywlsrud@kaist.ac.kr, alex6095@kaist.ac.kr, jshyunbin@kaist.ac.kr
 
 ## Files 
 ```
